@@ -1,0 +1,1317 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convert JSON to XLS and Download</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.1/css/bootstrap.min.css" />
+<script src="https://code.jquery.com/jquery-1.12.4.js" type="2dc175b3b258afb96d4dd305-text/javascript"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.3/jspdf.min.js" type="2dc175b3b258afb96d4dd305-text/javascript"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.js" type="2dc175b3b258afb96d4dd305-text/javascript"></script>
+<script type="2dc175b3b258afb96d4dd305-text/javascript">
+
+	let timeout = pdf = null;
+	let enter = true
+	async function createPdf(ids = []){
+
+
+      if (!pdf && enter) {
+        enter = false
+
+        const canvasCollection = await Promise.all(
+          ids.map((id) => {
+            return html2canvas(document.querySelector(id), { scale: 2 })
+          })
+        )
+
+        let position = 0,
+          splitHeight = 0,
+          pages = 0,
+          width = 215.9,
+          height
+        const pageHeight = 297
+        canvasCollection.forEach((canvas, index) => {
+          if (!pdf) {
+            pdf = new jsPDF({
+              orientation: 'p',
+              unit: 'mm',
+              format: 'letter',
+              compression: true
+            })
+            pdf.internal.scaleFactor = 2.25
+          }
+
+          height = (canvas.height * width) / canvas.width
+          console.log('\n\n---------------')
+          console.log('height ------------', height)
+          console.log('position ------------', position)
+          console.log('splitheight ------------', splitHeight)
+          
+          if (pages <= 0) if (index > 0) pdf.addPage()
+          
+
+          pdf.addImage(
+            canvas.toDataURL('image/png'),
+            'PNG',
+            0,
+            position,
+            width,
+            height,
+            undefined,
+            'FAST'
+          )
+          pdf.rect(
+            0,
+            0,
+            pdf.internal.pageSize.width,
+            pdf.internal.pageSize.height,
+            'S'
+          )
+
+          if (canvasCollection.length > 1 && (height - position) > 500) {
+            pages = Math.ceil((height - splitHeight)/ pageHeight)
+          } else {
+            pages = Math.floor(height / pageHeight)
+          }
+
+          position = pageHeight - position - 17
+
+          for (let i = 1; i <= pages; i++) {
+            pdf.addPage()
+            position = -(position)
+
+            console.log('position ----- ', position)
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, width, height)
+            pdf.rect(
+              0,
+              0,
+              pdf.internal.pageSize.width,
+              pdf.internal.pageSize.height,
+              'S'
+            )
+
+            if (pages > 1 && i < pages) {
+              position *= -1
+              position = pageHeight + position - 17
+            }
+          }
+
+          console.log('outside forloop -posotion--', position)
+          if (pages < 1) {
+            position = height
+            pages = 1
+          } else {
+            position *= -1
+            position = height - position
+            //position = pageHeight - remainingHeight + 17
+          }
+
+
+          if (index == ids.length - 1) {
+            pdf.save(`my.pdf`)
+          }
+
+
+          /*if (canvasCollection.length > 1 && (height - splitHeight) > pageHeight) {
+            pages = Math.ceil((height - splitHeight) / pageHeight)
+          } else if (splitHeight > 0) {
+            if (height - splitHeight > 0 && height - splitHeight < pageHeight) pages = 1
+            else pages = Math.floor((height - splitHeight) / pageHeight)
+          } else {
+            pages = Math.floor(height / pageHeight)
+          }
+console.log('\n--------------')
+
+          for (let i = 1; i <= pages; i++) {
+
+
+
+
+            pdf.addPage()
+            if (canvasCollection.length == 1 ) {
+				position = -1 * (pageHeight * i) + (17 * i)
+            } else  if (canvasCollection.length > 1 && splitHeight < 0 && height > pageHeight && i > 1) {
+              position = splitHeight + 17
+            } else { //if (height - splitHeight < pageHeight) {
+              console.log('i am in split height ------')
+              console.log('heigthe - splitheight --------', height - splitHeight)
+              position = -1 *  splitHeight + 17
+              //position = -1 * (pageHeight - splitHeight) + 17
+            }// else {
+             // position = -1 * (pageHeight * i) + (17 * i)
+             // if (splitHeight > 0) position += splitHeight
+           // }
+console.log('height ------------', height)
+          console.log('position ------------', position)
+          console.log('splitheight ------------', splitHeight)
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, width, height)
+            pdf.rect(
+              0,
+              0,
+              pdf.internal.pageSize.width,
+              pdf.internal.pageSize.height,
+              'S'
+            )
+            if (canvasCollection.length > 1 && pages > 1 && (height - splitHeight) > pageHeight) {
+              splitHeight = -1 * pageHeight + position
+            }
+          }
+          console.log('\n\n\n')
+
+          if (pages > 0) {
+            const remainingHeight = pageHeight + position
+          	if (position < 0 && remainingHeight < 0) {
+          			position = height + position
+          			splitHeight = pageHeight - position
+          	}  else {
+            position = splitHeight = height + position
+            }
+            pdf.line(0, position, pdf.internal.pageSize.width, position)
+            pdf.line(0, position + 1, pdf.internal.pageSize.width, position + 1)
+            if (splitHeight > 280) position = splitHeight = pages = 0
+            console.log('--------outside loop -------------')
+            console.log('position ---------', position)
+            console.log('splitHeight --------',  splitHeight)
+            console.log('\n\n')
+          } else if (height < pageHeight && pageHeight - height > 45) {
+            position = height + 5
+            splitHeight = pageHeight - height - 5
+            pages = 1
+            pdf.line(0, position, pdf.internal.pageSize.width, position)
+            pdf.line(0, position + 1, pdf.internal.pageSize.width, position + 1)
+          } else {
+            pages = splitHeight = 0
+          }
+
+          if (index == ids.length - 1) {
+            pdf.save(`my.pdf`)
+          }*/
+        })
+      }
+
+  };
+	
+	
+	</script>
+</head>
+<body class="container">
+<h1>Convert HTML into Multipage PDF Example using jsPDF</h1>
+<div class="row">
+<div class="col-md-12 text-center">
+<button onclick="if (!window.__cfRLUnblockHandlers) return false; createPdf([ '#pdf1', '#pdf2', '#pdf'])" id="downloadbtn" data-cf-modified-2dc175b3b258afb96d4dd305-=""><b>Click to Download HTML as PDF</b></button>
+<span id="genmsg" style="display:none;">Generating ...</span>
+<h6><a href="http://www.freakyjolly.com/jspdf-multipage-example-generate-multipage-pdf-using-single-canvas-of-html-document-using-jspdf/" target="_blank">Tutorial here: Generate Multipage PDF using Single Canvas of HTML Document using jsPDF</a></h6>
+</div>
+</div>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js" type="2dc175b3b258afb96d4dd305-text/javascript"></script>
+
+<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-2387490687776151" data-ad-slot="2498431224" data-ad-format="link"></ins>
+<script type="2dc175b3b258afb96d4dd305-text/javascript">
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+<div class="canvas_div_pdf mt-2" id="pdf" style="display: block;border:2px solid #ccc; padding:15px;">
+<div class="top_map_section clearfix">
+<div class="row">
+<div class="col-md-12"><img src="followup_56.png" title="logo" class="float-right" style="height:33px;">
+<h3 style="color: #0a69fc">Follow Up - Tracker: Report Generated <span class="report_gen_time">Date: 24 July 2018 Time: 11:20:54</span></h3>
+</div>
+</div>
+<div class="row">
+<div class="col-md-4 col-sm-12">
+<div>
+<h2 style="color:black">Steave (9877XXXXXXX)</h2></div>
+<div class="totalkm" style="color:black">
+<h4><span style="color:black">67.20 Kms</span> in <span style="color:black">05 hrs 13 mins</span></h4>
+<h6><b>24th July 2018, 6:05:53 am</b> - <b>11:19:49 am</b></h6></div>
+</div>
+<div class="col-md-8 col-sm-12  no-padding">
+<div class="float-right"><img src="googe_map_image_userid_8.png"></div>
+</div>
+</div>
+</div>
+<div class="table_section">
+<table class="table table-striped table-bordered table-hover" width="100%" cellspacing="0">
+<thead>
+<tr>
+<th>Place</th>
+
+
+<th style="width:200px;">Time</th>
+<th>GPS</th>
+<th>KM's Traveled</th>
+</tr>
+</thead>
+<tbody class="table_body_data">
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh - Panchkula Rd, Modern Housing Complex, Manimajra, Chandigarh, 160102, India</b></span>
+<br>Accuracy: <b>116<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 71%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:06:43">about 3 hours ago</time> <br>[24th July 2018, 8:06:43 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>0.85Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>7, Chandigarh - Panchkula Rd, Rajiv Vihar, Modern Housing Complex, Manimajra, Chandigarh, 160101, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 70%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:08:50">about 3 hours ago</time> <br>[24th July 2018, 8:08:50 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>1.51Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>240, Madhya Marg, Bapu Dham Colony, Sector 26 East, Chandigarh, 160101, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 69%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:11:30">about 3 hours ago</time> <br>[24th July 2018, 8:11:30 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>2.28Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>1324, Purv Marg, 28B, Sector 28, Chandigarh, 160101, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 69%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:12:51">about 3 hours ago</time> <br>[24th July 2018, 8:12:51 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>3.00Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>28, Udyog Path, Sector 28 D, Sector 28, Chandigarh, 160030, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 68%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:14:47">about 3 hours ago</time> <br>[24th July 2018, 8:14:47 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>3.98Kms</b></td>
+</tr>
+<tr>
+<!--<td class="colorBlack"><span style="font-size: 16px;"><b>3161, Udyog Path, Sector 27D, Sector 27, Chandigarh, 160019, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 68%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:16:14">about 3 hours ago</time> <br>[24th July 2018, 8:16:14 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>4.98Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>1146, Sarovar Path, Sector 21B, Sector 20, Chandigarh, 160022, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 68%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:17:33">about 3 hours ago</time> <br>[24th July 2018, 8:17:33 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>5.88Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>2223, Sarovar Path, Sector 21C, Sector 21, Chandigarh, 160022, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 66%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:20:11">about 3 hours ago</time> <br>[24th July 2018, 8:20:11 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>7.06Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Plot No. 1, Sarovar Path, 33A, Sector 33, Chandigarh, 160020, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 66%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:21:31">about 3 hours ago</time> <br>[24th July 2018, 8:21:31 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>7.77Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>NO ADDRESS FOUND</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 65%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:23:35">about 3 hours ago</time> <br>[24th July 2018, 8:23:35 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>8.13Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>322, Shanti Path, 34D, Sector 34, Chandigarh, 160047, India</b></span>
+<br>Accuracy: <b>96<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 65%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:24:52">about 3 hours ago</time> <br>[24th July 2018, 8:24:52 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>8.86Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>3026, Shanti Path, Sector 35D, Sector 35, Chandigarh, 160022, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 64%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:26:12">about 3 hours ago</time> <br>[24th July 2018, 8:26:12 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>9.49Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>1111, Shanti Path, AG Colony, Audit Pool Colony, Sector 41B, Sector 41, Chandigarh, 160036, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 64%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:27:32">about 3 hours ago</time> <br>[24th July 2018, 8:27:32 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>10.48Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>2150, Udyan Path, Block C, Sector 41, Chandigarh, 160036, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 63%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:28:51">about 3 hours ago</time> <br>[24th July 2018, 8:28:51 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>11.46Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh Rd, Badheri, Sector 41, Chandigarh, 160036, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 63%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:30:10">about 3 hours ago</time> <br>[24th July 2018, 8:30:10 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>12.13Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Sector 56, Sahibzada Ajit Singh Nagar, Chandigarh, India</b></span>
+<br>Accuracy: <b>1100<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 62%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:31:54">about 3 hours ago</time> <br>[24th July 2018, 8:31:54 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>13.18Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh Rd, 56A, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 160055, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 60%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:43:02">about 3 hours ago</time> <br>[24th July 2018, 8:43:02 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>14.10Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Phase 6, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 140308, India</b></span>
+<br>Accuracy: <b>32<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 60%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:54:24">about 2 hours ago</time> <br>[24th July 2018, 8:54:24 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>15.21Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Verka Chowk, Phase 6, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 140308, India</b></span>
+<br>Accuracy: <b>17<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 59%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:55:42">about 2 hours ago</time> <br>[24th July 2018, 8:55:42 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>15.33Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 160014, India</b></span>
+<br>Accuracy: <b>13<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 59%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:57:03">about 2 hours ago</time> <br>[24th July 2018, 8:57:03 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>15.95Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Model Town, Sahibzada Ajit Singh Nagar, Punjab 140307, India</b></span>
+<br>Accuracy: <b>15<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:00:22">about 2 hours ago</time> <br>[24th July 2018, 9:00:22 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>18.49Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Sunny Enclave, Kharar, Punjab 140307, India</b></span>
+<br>Accuracy: <b>116<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:01:42">about 2 hours ago</time> <br>[24th July 2018, 9:01:42 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>19.25Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Janta Nagar, Mundi Kharar, Punjab 140307, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:03:03">about 2 hours ago</time> <br>[24th July 2018, 9:03:03 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>19.90Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Janta Nagar, Kharar, Punjab 140301, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:05:02">about 2 hours ago</time> <br>[24th July 2018, 9:05:02 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>20.94Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Gill Rd, Main Bazar, Kharar, Punjab 140307, India</b></span>
+<br>Accuracy: <b>54<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 57%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:07:32">about 2 hours ago</time> <br>[24th July 2018, 9:07:32 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>21.52Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>New JDKR Causeway, Guru Teg Bahadur Nagar, Kharar, Punjab 140301, India</b></span>
+<br>Accuracy: <b>96<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:17:02">about 2 hours ago</time> <br>[24th July 2018, 9:17:02 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>22.56Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Aujala, Punjab 140301, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:19:01">about 2 hours ago</time> <br>[24th July 2018, 9:19:01 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>23.56Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Kurali, Punjab 140103, India</b></span>
+<br>Accuracy: <b>29<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 55%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:28:06">about 2 hours ago</time> <br>[24th July 2018, 9:28:06 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>32.42Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Ward No. 6, Kurali, Punjab 140103, India</b></span>
+<br>Accuracy: <b>68<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 55%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:29:35">about 2 hours ago</time> <br>[24th July 2018, 9:29:35 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>32.80Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Kurali, Punjab 140103, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 55%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:30:50">about 2 hours ago</time> <br>[24th July 2018, 9:30:50 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>33.48Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Adhreda, Punjab 140103, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:33:29">about 2 hours ago</time> <br>[24th July 2018, 9:33:29 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>35.14Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Mathahari, Punjab 140103, India</b></span>
+<br>Accuracy: <b>96<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:35:29">about 2 hours ago</time> <br>[24th July 2018, 9:35:29 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>36.62Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Chaklan, Punjab 140103, India</b></span>
+<br>Accuracy: <b>458<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:38:05">about 2 hours ago</time> <br>[24th July 2018, 9:38:05 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>38.71Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Punjab 140103, India</b></span>
+<br>Accuracy: <b>493<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:40:10">about 2 hours ago</time> <br>[24th July 2018, 9:40:10 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>40.83Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Punjab 140001, India</b></span>
+<br>Accuracy: <b>493<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:45:23">about 2 hours ago</time> <br>[24th July 2018, 9:45:23 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>45.34Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>333, Chandigarh Rd, Shekhian Mohalla, Gugga Mari Mohalla, Rupnagar, Punjab 140001, India</b></span>
+<br>Accuracy: <b>56<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:50:28">about 2 hours ago</time> <br>[24th July 2018, 9:50:28 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>48.78Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Canal Colony, Rupnagar, Punjab 140001, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:53:15">about an hour ago</time> <br>[24th July 2018, 9:53:15 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>50.51Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Canal Colony, Rupnagar, Punjab 140001, India</b></span>
+<br>Accuracy: <b>422<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 53%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:58:28">about an hour ago</time> <br>[24th July 2018, 9:58:28 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>51.80Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Punjab 144533, India</b></span>
+<br>Accuracy: <b>512<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 53%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:59:53">about an hour ago</time> <br>[24th July 2018, 9:59:53 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>52.58Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Rail, Punjab 144533, India</b></span>
+<br>Accuracy: <b>235<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 53%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:04:24">about an hour ago</time> <br>[24th July 2018, 10:04:24 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>56.70Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Taunsa, Punjab 144533, India</b></span>
+<br>Accuracy: <b>466<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 53%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:06:27">about an hour ago</time> <br>[24th July 2018, 10:06:27 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>58.65Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Jamiatgarh, Punjab 144522, India</b></span>
+<br>Accuracy: <b>27<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 52%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:09:36">about an hour ago</time> <br>[24th July 2018, 10:09:36 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>61.86Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Kishanpur, Punjab 144522, India</b></span>
+<br>Accuracy: <b>391<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 52%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:14:03">about an hour ago</time> <br>[24th July 2018, 10:14:03 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>66.10Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Aima Chahal, Punjab 144522, India</b></span>
+<br>Accuracy: <b>12<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 51%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:26:42">about an hour ago</time> <br>[24th July 2018, 10:26:42 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>66.94Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Bharthala, Punjab 144522, India</b></span>
+<br>Accuracy: <b>26<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 45%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 11:19:49">2 minutes ago</time> <br>[24th July 2018, 11:19:49 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>67.20Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh Rd, Badheri, Sector 41, Chandigarh, 160036, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 63%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:30:10">about 3 hours ago</time> <br>[24th July 2018, 8:30:10 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>12.13Kms</b></td>
+</tr>-->
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Sector 56, Sahibzada Ajit Singh Nagar, Chandigarh, India</b></span>
+<br>Accuracy: <b>1100<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 62%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:31:54">about 3 hours ago</time> <br>[24th July 2018, 8:31:54 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>13.18Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh Rd, 56A, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 160055, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 60%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:43:02">about 3 hours ago</time> <br>[24th July 2018, 8:43:02 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>14.10Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Phase 6, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 140308, India</b></span>
+<br>Accuracy: <b>32<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 60%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:54:24">about 2 hours ago</time> <br>[24th July 2018, 8:54:24 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>15.21Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Verka Chowk, Phase 6, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 140308, India</b></span>
+<br>Accuracy: <b>17<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 59%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:55:42">about 2 hours ago</time> <br>[24th July 2018, 8:55:42 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>15.33Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 160014, India</b></span>
+<br>Accuracy: <b>13<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 59%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:57:03">about 2 hours ago</time> <br>[24th July 2018, 8:57:03 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>15.95Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Model Town, Sahibzada Ajit Singh Nagar, Punjab 140307, India</b></span>
+<br>Accuracy: <b>15<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:00:22">about 2 hours ago</time> <br>[24th July 2018, 9:00:22 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>18.49Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Sunny Enclave, Kharar, Punjab 140307, India</b></span>
+<br>Accuracy: <b>116<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:01:42">about 2 hours ago</time> <br>[24th July 2018, 9:01:42 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>19.25Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Janta Nagar, Mundi Kharar, Punjab 140307, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:03:03">about 2 hours ago</time> <br>[24th July 2018, 9:03:03 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>19.90Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Janta Nagar, Kharar, Punjab 140301, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:05:02">about 2 hours ago</time> <br>[24th July 2018, 9:05:02 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>20.94Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Gill Rd, Main Bazar, Kharar, Punjab 140307, India</b></span>
+<br>Accuracy: <b>54<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 57%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:07:32">about 2 hours ago</time> <br>[24th July 2018, 9:07:32 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>21.52Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>New JDKR Causeway, Guru Teg Bahadur Nagar, Kharar, Punjab 140301, India</b></span>
+<br>Accuracy: <b>96<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:17:02">about 2 hours ago</time> <br>[24th July 2018, 9:17:02 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>22.56Kms</b></td>
+</tr>
+<tr>
+<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Aujala, Punjab 140301, India</b></span>
+<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:19:01">about 2 hours ago</time> <br>[24th July 2018, 9:19:01 am]</b></td>
+<td class="colorBlack"><b style="color:green">ON</b></td>
+<td class="colorBlack"><b>23.56Kms</b></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="canvas_div_pdf mt-2" id="pdf1" style="display: block;border:2px solid #ccc; padding:15px;">
+	<div class="top_map_section clearfix">
+		<div class="row">
+			<div class="col-md-12"><img src="followup_56.png" title="logo" class="float-right" style="height:33px;">
+				<h3 style="color: #0a69fc">Follow Up - Tracker: Report Generated <span class="report_gen_time">Date: 24 July 2018 Time: 11:20:54</span></h3>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-4 col-sm-12">
+				<div>
+					<h2 style="color:black">Steave (9877XXXXXXX)</h2></div>
+				<div class="totalkm" style="color:black">
+					<h4><span style="color:black">67.20 Kms</span> in <span style="color:black">05 hrs 13 mins</span></h4>
+					<h6><b>24th July 2018, 6:05:53 am</b> - <b>11:19:49 am</b></h6></div>
+			</div>
+			<div class="col-md-8 col-sm-12  no-padding">
+				<div class="float-right"><img src="googe_map_image_userid_8.png"></div>
+			</div>
+		</div>
+	</div>
+	<div class="table_section">
+		<table class="table table-striped table-bordered table-hover" width="100%" cellspacing="0">
+			<thead>
+			<tr>
+				<th>Place</th>
+
+
+				<th style="width:200px;">Time</th>
+				<th>GPS</th>
+				<th>KM's Traveled</th>
+			</tr>
+			</thead>
+			<tbody class="table_body_data">
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh - Panchkula Rd, Modern Housing Complex, Manimajra, Chandigarh, 160102, India</b></span>
+					<br>Accuracy: <b>116<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 71%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:06:43">about 3 hours ago</time> <br>[24th July 2018, 8:06:43 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>0.85Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>7, Chandigarh - Panchkula Rd, Rajiv Vihar, Modern Housing Complex, Manimajra, Chandigarh, 160101, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 70%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:08:50">about 3 hours ago</time> <br>[24th July 2018, 8:08:50 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>1.51Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>240, Madhya Marg, Bapu Dham Colony, Sector 26 East, Chandigarh, 160101, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 69%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:11:30">about 3 hours ago</time> <br>[24th July 2018, 8:11:30 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>2.28Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>1324, Purv Marg, 28B, Sector 28, Chandigarh, 160101, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 69%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:12:51">about 3 hours ago</time> <br>[24th July 2018, 8:12:51 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>3.00Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Janta Nagar, Kharar, Punjab 140301, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:05:02">about 2 hours ago</time> <br>[24th July 2018, 9:05:02 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>20.94Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Gill Rd, Main Bazar, Kharar, Punjab 140307, India</b></span>
+					<br>Accuracy: <b>54<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 57%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:07:32">about 2 hours ago</time> <br>[24th July 2018, 9:07:32 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>21.52Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>New JDKR Causeway, Guru Teg Bahadur Nagar, Kharar, Punjab 140301, India</b></span>
+					<br>Accuracy: <b>96<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:17:02">about 2 hours ago</time> <br>[24th July 2018, 9:17:02 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>22.56Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Aujala, Punjab 140301, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:19:01">about 2 hours ago</time> <br>[24th July 2018, 9:19:01 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>23.56Kms</b></td>
+			</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
+<div class="canvas_div_pdf mt-2" id="pdf2" style="display: block;border:2px solid #ccc; padding:15px;">
+	<div class="top_map_section clearfix">
+		<div class="row">
+			<div class="col-md-12"><img src="followup_56.png" title="logo" class="float-right" style="height:33px;">
+				<h3 style="color: #0a69fc">Follow Up - Tracker: Report Generated <span class="report_gen_time">Date: 24 July 2018 Time: 11:20:54</span></h3>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-4 col-sm-12">
+				<div>
+					<h2 style="color:black">Steave (9877XXXXXXX)</h2></div>
+				<div class="totalkm" style="color:black">
+					<h4><span style="color:black">67.20 Kms</span> in <span style="color:black">05 hrs 13 mins</span></h4>
+					<h6><b>24th July 2018, 6:05:53 am</b> - <b>11:19:49 am</b></h6></div>
+			</div>
+			<div class="col-md-8 col-sm-12  no-padding">
+				<div class="float-right"><img src="googe_map_image_userid_8.png"></div>
+			</div>
+		</div>
+	</div>
+	<div class="table_section">
+		<table class="table table-striped table-bordered table-hover" width="100%" cellspacing="0">
+			<thead>
+			<tr>
+				<th>Place</th>
+
+
+				<th style="width:200px;">Time</th>
+				<th>GPS</th>
+				<th>KM's Traveled</th>
+			</tr>
+			</thead>
+			<tbody class="table_body_data">
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh - Panchkula Rd, Modern Housing Complex, Manimajra, Chandigarh, 160102, India</b></span>
+					<br>Accuracy: <b>116<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 71%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:06:43">about 3 hours ago</time> <br>[24th July 2018, 8:06:43 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>0.85Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>7, Chandigarh - Panchkula Rd, Rajiv Vihar, Modern Housing Complex, Manimajra, Chandigarh, 160101, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 70%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:08:50">about 3 hours ago</time> <br>[24th July 2018, 8:08:50 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>1.51Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>240, Madhya Marg, Bapu Dham Colony, Sector 26 East, Chandigarh, 160101, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 69%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:11:30">about 3 hours ago</time> <br>[24th July 2018, 8:11:30 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>2.28Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>1324, Purv Marg, 28B, Sector 28, Chandigarh, 160101, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 69%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:12:51">about 3 hours ago</time> <br>[24th July 2018, 8:12:51 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>3.00Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>28, Udyog Path, Sector 28 D, Sector 28, Chandigarh, 160030, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 68%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:14:47">about 3 hours ago</time> <br>[24th July 2018, 8:14:47 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>3.98Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>3161, Udyog Path, Sector 27D, Sector 27, Chandigarh, 160019, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 68%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:16:14">about 3 hours ago</time> <br>[24th July 2018, 8:16:14 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>4.98Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>1146, Sarovar Path, Sector 21B, Sector 20, Chandigarh, 160022, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 68%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:17:33">about 3 hours ago</time> <br>[24th July 2018, 8:17:33 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>5.88Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>2223, Sarovar Path, Sector 21C, Sector 21, Chandigarh, 160022, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 66%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:20:11">about 3 hours ago</time> <br>[24th July 2018, 8:20:11 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>7.06Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Plot No. 1, Sarovar Path, 33A, Sector 33, Chandigarh, 160020, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 66%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:21:31">about 3 hours ago</time> <br>[24th July 2018, 8:21:31 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>7.77Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>NO ADDRESS FOUND</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 65%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:23:35">about 3 hours ago</time> <br>[24th July 2018, 8:23:35 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>8.13Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>322, Shanti Path, 34D, Sector 34, Chandigarh, 160047, India</b></span>
+                <br>Accuracy: <b>96<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 65%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:24:52">about 3 hours ago</time> <br>[24th July 2018, 8:24:52 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>8.86Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>3026, Shanti Path, Sector 35D, Sector 35, Chandigarh, 160022, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 64%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:26:12">about 3 hours ago</time> <br>[24th July 2018, 8:26:12 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>9.49Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>1111, Shanti Path, AG Colony, Audit Pool Colony, Sector 41B, Sector 41, Chandigarh, 160036, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 64%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:27:32">about 3 hours ago</time> <br>[24th July 2018, 8:27:32 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>10.48Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>2150, Udyan Path, Block C, Sector 41, Chandigarh, 160036, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 63%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:28:51">about 3 hours ago</time> <br>[24th July 2018, 8:28:51 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>11.46Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh Rd, Badheri, Sector 41, Chandigarh, 160036, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 63%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:30:10">about 3 hours ago</time> <br>[24th July 2018, 8:30:10 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>12.13Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Sector 56, Sahibzada Ajit Singh Nagar, Chandigarh, India</b></span>
+                <br>Accuracy: <b>1100<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 62%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:31:54">about 3 hours ago</time> <br>[24th July 2018, 8:31:54 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>13.18Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh Rd, 56A, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 160055, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 60%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:43:02">about 3 hours ago</time> <br>[24th July 2018, 8:43:02 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>14.10Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Phase 6, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 140308, India</b></span>
+                <br>Accuracy: <b>32<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 60%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:54:24">about 2 hours ago</time> <br>[24th July 2018, 8:54:24 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>15.21Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Verka Chowk, Phase 6, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 140308, India</b></span>
+                <br>Accuracy: <b>17<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 59%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:55:42">about 2 hours ago</time> <br>[24th July 2018, 8:55:42 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>15.33Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 160014, India</b></span>
+                <br>Accuracy: <b>13<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 59%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:57:03">about 2 hours ago</time> <br>[24th July 2018, 8:57:03 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>15.95Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Model Town, Sahibzada Ajit Singh Nagar, Punjab 140307, India</b></span>
+                <br>Accuracy: <b>15<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:00:22">about 2 hours ago</time> <br>[24th July 2018, 9:00:22 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>18.49Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Sunny Enclave, Kharar, Punjab 140307, India</b></span>
+                <br>Accuracy: <b>116<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:01:42">about 2 hours ago</time> <br>[24th July 2018, 9:01:42 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>19.25Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Janta Nagar, Mundi Kharar, Punjab 140307, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:03:03">about 2 hours ago</time> <br>[24th July 2018, 9:03:03 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>19.90Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Janta Nagar, Kharar, Punjab 140301, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:05:02">about 2 hours ago</time> <br>[24th July 2018, 9:05:02 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>20.94Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Gill Rd, Main Bazar, Kharar, Punjab 140307, India</b></span>
+                <br>Accuracy: <b>54<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 57%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:07:32">about 2 hours ago</time> <br>[24th July 2018, 9:07:32 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>21.52Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>New JDKR Causeway, Guru Teg Bahadur Nagar, Kharar, Punjab 140301, India</b></span>
+                <br>Accuracy: <b>96<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:17:02">about 2 hours ago</time> <br>[24th July 2018, 9:17:02 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>22.56Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Aujala, Punjab 140301, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:19:01">about 2 hours ago</time> <br>[24th July 2018, 9:19:01 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>23.56Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Kurali, Punjab 140103, India</b></span>
+                <br>Accuracy: <b>29<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 55%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:28:06">about 2 hours ago</time> <br>[24th July 2018, 9:28:06 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>32.42Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Ward No. 6, Kurali, Punjab 140103, India</b></span>
+                <br>Accuracy: <b>68<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 55%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:29:35">about 2 hours ago</time> <br>[24th July 2018, 9:29:35 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>32.80Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Kurali, Punjab 140103, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 55%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:30:50">about 2 hours ago</time> <br>[24th July 2018, 9:30:50 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>33.48Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Adhreda, Punjab 140103, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:33:29">about 2 hours ago</time> <br>[24th July 2018, 9:33:29 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>35.14Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Mathahari, Punjab 140103, India</b></span>
+                <br>Accuracy: <b>96<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:35:29">about 2 hours ago</time> <br>[24th July 2018, 9:35:29 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>36.62Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Chaklan, Punjab 140103, India</b></span>
+                <br>Accuracy: <b>458<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:38:05">about 2 hours ago</time> <br>[24th July 2018, 9:38:05 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>38.71Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Punjab 140103, India</b></span>
+                <br>Accuracy: <b>493<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:40:10">about 2 hours ago</time> <br>[24th July 2018, 9:40:10 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>40.83Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Punjab 140001, India</b></span>
+                <br>Accuracy: <b>493<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:45:23">about 2 hours ago</time> <br>[24th July 2018, 9:45:23 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>45.34Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>333, Chandigarh Rd, Shekhian Mohalla, Gugga Mari Mohalla, Rupnagar, Punjab 140001, India</b></span>
+                <br>Accuracy: <b>56<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:50:28">about 2 hours ago</time> <br>[24th July 2018, 9:50:28 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>48.78Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Canal Colony, Rupnagar, Punjab 140001, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 54%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:53:15">about an hour ago</time> <br>[24th July 2018, 9:53:15 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>50.51Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Canal Colony, Rupnagar, Punjab 140001, India</b></span>
+                <br>Accuracy: <b>422<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 53%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:58:28">about an hour ago</time> <br>[24th July 2018, 9:58:28 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>51.80Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Punjab 144533, India</b></span>
+                <br>Accuracy: <b>512<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 53%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:59:53">about an hour ago</time> <br>[24th July 2018, 9:59:53 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>52.58Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Rail, Punjab 144533, India</b></span>
+                <br>Accuracy: <b>235<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 53%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:04:24">about an hour ago</time> <br>[24th July 2018, 10:04:24 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>56.70Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Taunsa, Punjab 144533, India</b></span>
+                <br>Accuracy: <b>466<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 53%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:06:27">about an hour ago</time> <br>[24th July 2018, 10:06:27 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>58.65Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Jamiatgarh, Punjab 144522, India</b></span>
+                <br>Accuracy: <b>27<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 52%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:09:36">about an hour ago</time> <br>[24th July 2018, 10:09:36 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>61.86Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Kishanpur, Punjab 144522, India</b></span>
+                <br>Accuracy: <b>391<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 52%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:14:03">about an hour ago</time> <br>[24th July 2018, 10:14:03 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>66.10Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Phagwara-Mohali Express Hwy, Aima Chahal, Punjab 144522, India</b></span>
+                <br>Accuracy: <b>12<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 51%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 10:26:42">about an hour ago</time> <br>[24th July 2018, 10:26:42 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>66.94Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Bharthala, Punjab 144522, India</b></span>
+                <br>Accuracy: <b>26<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 45%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 11:19:49">2 minutes ago</time> <br>[24th July 2018, 11:19:49 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>67.20Kms</b></td>
+                </tr>
+                <tr>
+                <td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh Rd, Badheri, Sector 41, Chandigarh, 160036, India</b></span>
+                <br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+                <br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 63%</td>
+                <td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:30:10">about 3 hours ago</time> <br>[24th July 2018, 8:30:10 am]</b></td>
+                <td class="colorBlack"><b style="color:green">ON</b></td>
+                <td class="colorBlack"><b>12.13Kms</b></td>
+                </tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Sector 56, Sahibzada Ajit Singh Nagar, Chandigarh, India</b></span>
+					<br>Accuracy: <b>1100<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 62%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:31:54">about 3 hours ago</time> <br>[24th July 2018, 8:31:54 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>13.18Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh Rd, 56A, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 160055, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 60%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:43:02">about 3 hours ago</time> <br>[24th July 2018, 8:43:02 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>14.10Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Phase 6, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 140308, India</b></span>
+					<br>Accuracy: <b>32<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-three-quarters" style="color:#83b10e;"></i></span> 60%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:54:24">about 2 hours ago</time> <br>[24th July 2018, 8:54:24 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>15.21Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Verka Chowk, Phase 6, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 140308, India</b></span>
+					<br>Accuracy: <b>17<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 59%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:55:42">about 2 hours ago</time> <br>[24th July 2018, 8:55:42 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>15.33Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Sector 56, Sahibzada Ajit Singh Nagar, Punjab 160014, India</b></span>
+					<br>Accuracy: <b>13<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 59%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 08:57:03">about 2 hours ago</time> <br>[24th July 2018, 8:57:03 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>15.95Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Model Town, Sahibzada Ajit Singh Nagar, Punjab 140307, India</b></span>
+					<br>Accuracy: <b>15<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:00:22">about 2 hours ago</time> <br>[24th July 2018, 9:00:22 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>18.49Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Sunny Enclave, Kharar, Punjab 140307, India</b></span>
+					<br>Accuracy: <b>116<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:01:42">about 2 hours ago</time> <br>[24th July 2018, 9:01:42 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>19.25Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Janta Nagar, Mundi Kharar, Punjab 140307, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:03:03">about 2 hours ago</time> <br>[24th July 2018, 9:03:03 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>19.90Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Ludhiana - Chandigarh State Hwy, Janta Nagar, Kharar, Punjab 140301, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 58%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:05:02">about 2 hours ago</time> <br>[24th July 2018, 9:05:02 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>20.94Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Gill Rd, Main Bazar, Kharar, Punjab 140307, India</b></span>
+					<br>Accuracy: <b>54<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 57%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:07:32">about 2 hours ago</time> <br>[24th July 2018, 9:07:32 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>21.52Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>New JDKR Causeway, Guru Teg Bahadur Nagar, Kharar, Punjab 140301, India</b></span>
+					<br>Accuracy: <b>96<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:17:02">about 2 hours ago</time> <br>[24th July 2018, 9:17:02 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>22.56Kms</b></td>
+			</tr>
+			<tr>
+				<td class="colorBlack"><span style="font-size: 16px;"><b>Chandigarh-Chintapurni-Dharamshala Rd, Aujala, Punjab 140301, India</b></span>
+					<br>Accuracy: <b>10<img class="inline-activity-icon" src="still.png"></b>
+					<br>Battery: <span class="batry-wrap"><i class="fa fa-battery-half" style="color:#a1b10e;"></i></span> 56%</td>
+				<td class="colorBlack"><b><time class="timeago" datetime="2018-07-24 09:19:01">about 2 hours ago</time> <br>[24th July 2018, 9:19:01 am]</b></td>
+				<td class="colorBlack"><b style="color:green">ON</b></td>
+				<td class="colorBlack"><b>23.56Kms</b></td>
+			</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
+<script src="https://ajax.cloudflare.com/cdn-cgi/scripts/95c75768/cloudflare-static/rocket-loader.min.js" data-cf-settings="2dc175b3b258afb96d4dd305-|49" defer=""></script></body>
+</html>
